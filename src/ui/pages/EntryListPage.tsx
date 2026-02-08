@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { listEntriesByDateDesc } from '../../db/entries'
 import type { Entry } from '../../domain/entry'
 
 export function EntryListPage() {
   const [entries, setEntries] = useState<Entry[]>([])
+  const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -25,6 +26,19 @@ export function EntryListPage() {
     }
   }
 
+  // 検索フィルタリング（body と summary を対象、大文字小文字無視）
+  const filteredEntries = useMemo(() => {
+    if (!query.trim()) {
+      return entries
+    }
+    const lowerQuery = query.toLowerCase()
+    return entries.filter((entry) => {
+      const bodyMatch = entry.body.toLowerCase().includes(lowerQuery)
+      const summaryMatch = entry.summary?.toLowerCase().includes(lowerQuery) ?? false
+      return bodyMatch || summaryMatch
+    })
+  }, [entries, query])
+
   if (loading) {
     return <div style={styles.container}>読み込み中...</div>
   }
@@ -36,13 +50,34 @@ export function EntryListPage() {
         <Link to="/new" style={styles.newButton}>新規作成</Link>
       </header>
 
+      <div style={styles.searchBox}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="検索..."
+          style={styles.searchInput}
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            style={styles.clearButton}
+            aria-label="検索をクリア"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       {error && <p style={styles.error}>{error}</p>}
 
       {entries.length === 0 ? (
         <p style={styles.empty}>まだ日記がありません</p>
+      ) : filteredEntries.length === 0 ? (
+        <p style={styles.empty}>該当する日記がありません</p>
       ) : (
         <ul style={styles.list}>
-          {entries.map((entry) => (
+          {filteredEntries.map((entry) => (
             <li key={entry.id} style={styles.listItem}>
               <Link to={`/entry/${entry.id}`} style={styles.entryLink}>
                 <span style={styles.date}>{entry.date}</span>
@@ -89,6 +124,31 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff',
     textDecoration: 'none',
     borderRadius: '4px',
+  },
+  searchBox: {
+    position: 'relative',
+    marginBottom: '1rem',
+  },
+  searchInput: {
+    width: '100%',
+    padding: '0.5rem',
+    paddingRight: '2rem',
+    fontSize: '1rem',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    boxSizing: 'border-box',
+  },
+  clearButton: {
+    position: 'absolute',
+    right: '0.5rem',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    fontSize: '1.2rem',
+    color: '#999',
+    cursor: 'pointer',
+    padding: '0.25rem',
   },
   error: {
     color: '#d00',
