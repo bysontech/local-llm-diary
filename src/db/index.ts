@@ -4,12 +4,19 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Entry } from '../domain/entry'
 
-const db = new Dexie('LocalLLMDiaryDB') as Dexie & {
-  entries: EntityTable<Entry, 'id'>
+export interface Setting {
+  key: string
+  value: unknown
 }
 
-db.version(1).stores({
-  entries: 'id, date, createdAt, updatedAt, summaryStatus'
+const db = new Dexie('LocalLLMDiaryDB') as Dexie & {
+  entries: EntityTable<Entry, 'id'>
+  settings: EntityTable<Setting, 'key'>
+}
+
+db.version(2).stores({
+  entries: 'id, date, createdAt, updatedAt, summaryStatus',
+  settings: 'key'
 })
 
 export { db }

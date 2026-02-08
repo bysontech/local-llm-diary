@@ -26,6 +26,7 @@ export interface CreateEntryParams {
  * Entry更新用のパラメータ
  */
 export interface UpdateEntryParams {
+  date?: string
   body?: string
   summary?: string
   summaryStatus?: SummaryStatus
