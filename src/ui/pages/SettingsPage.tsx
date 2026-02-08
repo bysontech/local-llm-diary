@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { isSummaryEnabled, setSummaryEnabled } from '../../db/settings'
 import { clearEntries } from '../../db/entries'
+import { exportData, importData, downloadJson } from '../../db/backup'
 
 export function SettingsPage() {
   const [summaryOn, setSummaryOn] = useState(true)
   const [loading, setLoading] = useState(true)
   const [clearing, setClearing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadSettings()
@@ -54,6 +58,54 @@ export function SettingsPage() {
     }
   }
 
+  async function handleExport() {
+    setExporting(true)
+    setMessage(null)
+    try {
+      const json = await exportData()
+      const date = new Date().toISOString().split('T')[0]
+      downloadJson(json, `diary-backup-${date}.json`)
+      setMessage('エクスポートしました')
+    } catch {
+      setMessage('エクスポートに失敗しました')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // ファイル選択をリセット（同じファイルを再選択可能に）
+    e.target.value = ''
+
+    const confirmed = window.confirm(
+      'インポートすると現在のデータが全て上書きされます。\n続行しますか？'
+    )
+    if (!confirmed) return
+
+    setImporting(true)
+    setMessage(null)
+
+    try {
+      const text = await file.text()
+      await importData(text)
+      // 設定を再読み込み
+      await loadSettings()
+      setMessage('インポートしました')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'インポートに失敗しました'
+      setMessage(errorMessage)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   if (loading) {
     return <div style={styles.container}>読み込み中...</div>
   }
@@ -80,6 +132,37 @@ export function SettingsPage() {
         </label>
         <p style={styles.hint}>
           OFFにすると、新規作成・編集時に要約が生成されません。
+        </p>
+      </section>
+
+      <section style={styles.section}>
+        <h2 style={styles.sectionTitle}>バックアップ</h2>
+        <div style={styles.buttonRow}>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            style={styles.button}
+          >
+            {exporting ? 'エクスポート中...' : 'エクスポート'}
+          </button>
+          <button
+            onClick={handleImportClick}
+            disabled={importing}
+            style={styles.button}
+          >
+            {importing ? 'インポート中...' : 'インポート'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileSelect}
+            style={styles.hiddenInput}
+          />
+        </div>
+        <p style={styles.hint}>
+          日記と設定をJSONファイルでバックアップできます。
+          インポートすると現在のデータは上書きされます。
         </p>
       </section>
 
@@ -145,6 +228,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#666',
     fontSize: '0.85rem',
     marginTop: '0.5rem',
+  },
+  buttonRow: {
+    display: 'flex',
+    gap: '0.5rem',
+  },
+  button: {
+    padding: '0.5rem 1rem',
+    fontSize: '0.9rem',
+  },
+  hiddenInput: {
+    display: 'none',
   },
   dangerButton: {
     padding: '0.5rem 1rem',
