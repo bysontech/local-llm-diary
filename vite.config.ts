@@ -7,12 +7,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'robots.txt'],
       manifest: {
-        name: 'Template B PWA',
-        short_name: 'TemplateB',
-        description: 'Client-only PWA template with IndexedDB',
+        name: 'ローカル日記',
+        short_name: '日記',
+        description: 'プライバシー重視のローカル日記アプリ',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
@@ -36,7 +36,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       }
     })
   ],
