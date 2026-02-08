@@ -107,7 +107,7 @@ export function EntryDetailPage() {
       </section>
 
       <div style={styles.actions}>
-        <Link to={`/edit/${id}`} style={styles.editButton}>編集</Link>
+        <Link to={`/edit/${entry.id}`} style={styles.editButton}>編集</Link>
         <button
           onClick={handleDelete}
           disabled={deleting}

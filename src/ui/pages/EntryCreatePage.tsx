@@ -6,9 +6,10 @@ import { summarizeRuleBased } from '../../llm/rule-based'
 
 export function EntryCreatePage() {
   const navigate = useNavigate()
-  const today = new Date().toISOString().split('T')[0]
 
-  const [date, setDate] = useState(today)
+  const [date, setDate] = useState(() =>
+    new Date().toISOString().split('T')[0]
+  )
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

@@ -88,7 +88,10 @@ export function validateBackupData(data: unknown): data is BackupData {
     ) {
       return false
     }
-    if (typeof e.createdAt !== 'number' || typeof e.updatedAt !== 'number') {
+    if (
+      !Number.isFinite(e.createdAt) ||
+      !Number.isFinite(e.updatedAt)
+    ) {
       return false
     }
   }
