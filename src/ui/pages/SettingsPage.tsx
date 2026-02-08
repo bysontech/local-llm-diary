@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { isSummaryEnabled, setSummaryEnabled } from '../../db/settings'
 import { clearEntries } from '../../db/entries'
-import { exportData, importData, downloadJson } from '../../db/backup'
+import {
+  exportData,
+  importData,
+  downloadJson,
+  exportDataEncrypted,
+  importDataEncrypted,
+} from '../../db/backup'
 
 export function SettingsPage() {
   const [summaryOn, setSummaryOn] = useState(true)
@@ -10,8 +16,13 @@ export function SettingsPage() {
   const [clearing, setClearing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [exportingEncrypted, setExportingEncrypted] = useState(false)
+  const [importingEncrypted, setImportingEncrypted] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [encryptPassword, setEncryptPassword] = useState('')
+  const [decryptPassword, setDecryptPassword] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const encryptedFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadSettings()
@@ -106,6 +117,64 @@ export function SettingsPage() {
     }
   }
 
+  // 暗号化エクスポート
+  async function handleExportEncrypted() {
+    if (!encryptPassword) {
+      setMessage('パスワードを入力してください')
+      return
+    }
+
+    setExportingEncrypted(true)
+    setMessage(null)
+    try {
+      const json = await exportDataEncrypted(encryptPassword)
+      const date = new Date().toISOString().split('T')[0]
+      downloadJson(json, `encrypted-backup-${date}.json`)
+      setEncryptPassword('')
+      setMessage('暗号化エクスポートしました')
+    } catch {
+      setMessage('暗号化エクスポートに失敗しました')
+    } finally {
+      setExportingEncrypted(false)
+    }
+  }
+
+  function handleEncryptedImportClick() {
+    if (!decryptPassword) {
+      setMessage('パスワードを入力してください')
+      return
+    }
+    encryptedFileInputRef.current?.click()
+  }
+
+  async function handleEncryptedFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    e.target.value = ''
+
+    const confirmed = window.confirm(
+      'インポートすると現在のデータが全て上書きされます。\n続行しますか？'
+    )
+    if (!confirmed) return
+
+    setImportingEncrypted(true)
+    setMessage(null)
+
+    try {
+      const text = await file.text()
+      await importDataEncrypted(text, decryptPassword)
+      await loadSettings()
+      setDecryptPassword('')
+      setMessage('暗号化インポートしました')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '暗号化インポートに失敗しました'
+      setMessage(errorMessage)
+    } finally {
+      setImportingEncrypted(false)
+    }
+  }
+
   if (loading) {
     return <div style={styles.container}>読み込み中...</div>
   }
@@ -136,7 +205,7 @@ export function SettingsPage() {
       </section>
 
       <section style={styles.section}>
-        <h2 style={styles.sectionTitle}>バックアップ</h2>
+        <h2 style={styles.sectionTitle}>バックアップ（平文）</h2>
         <div style={styles.buttonRow}>
           <button
             onClick={handleExport}
@@ -162,7 +231,53 @@ export function SettingsPage() {
         </div>
         <p style={styles.hint}>
           日記と設定をJSONファイルでバックアップできます。
-          インポートすると現在のデータは上書きされます。
+        </p>
+      </section>
+
+      <section style={styles.section}>
+        <h2 style={styles.sectionTitle}>暗号化バックアップ</h2>
+        <div style={styles.encryptRow}>
+          <input
+            type="password"
+            value={encryptPassword}
+            onChange={(e) => setEncryptPassword(e.target.value)}
+            placeholder="パスワード"
+            style={styles.passwordInput}
+          />
+          <button
+            onClick={handleExportEncrypted}
+            disabled={exportingEncrypted}
+            style={styles.button}
+          >
+            {exportingEncrypted ? '暗号化中...' : '暗号化エクスポート'}
+          </button>
+        </div>
+        <div style={styles.encryptRow}>
+          <input
+            type="password"
+            value={decryptPassword}
+            onChange={(e) => setDecryptPassword(e.target.value)}
+            placeholder="パスワード"
+            style={styles.passwordInput}
+          />
+          <button
+            onClick={handleEncryptedImportClick}
+            disabled={importingEncrypted}
+            style={styles.button}
+          >
+            {importingEncrypted ? '復号中...' : '暗号化インポート'}
+          </button>
+          <input
+            ref={encryptedFileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleEncryptedFileSelect}
+            style={styles.hiddenInput}
+          />
+        </div>
+        <p style={styles.hint}>
+          パスワードで暗号化してバックアップします。
+          パスワードを忘れると復元できません。
         </p>
       </section>
 
@@ -233,9 +348,22 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '0.5rem',
   },
+  encryptRow: {
+    display: 'flex',
+    gap: '0.5rem',
+    marginBottom: '0.5rem',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: '0.5rem',
+    fontSize: '0.9rem',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+  },
   button: {
     padding: '0.5rem 1rem',
     fontSize: '0.9rem',
+    whiteSpace: 'nowrap',
   },
   hiddenInput: {
     display: 'none',
