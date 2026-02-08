@@ -1,7 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { listEntriesByDateDesc } from '../../db/entries'
-import type { Entry } from '../../domain/entry'
+import type { Entry, SummaryStatus } from '../../domain/entry'
+
+const SUMMARY_STATUS_LABEL: Record<SummaryStatus, string> = {
+  done: '[要約済]',
+  pending: '[要約中]',
+  failed: '[要約失敗]',
+  none: '',
+}
 
 export function EntryListPage() {
   const [entries, setEntries] = useState<Entry[]>([])
@@ -10,21 +17,26 @@ export function EntryListPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadEntries()
-  }, [])
-
-  async function loadEntries() {
-    try {
-      setLoading(true)
-      const list = await listEntriesByDateDesc()
-      setEntries(list)
-      setError(null)
-    } catch {
-      setError('データの読み込みに失敗しました')
-    } finally {
-      setLoading(false)
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const list = await listEntriesByDateDesc()
+        if (!cancelled) {
+          setEntries(list)
+          setError(null)
+        }
+      } catch {
+        if (!cancelled) setError('データの読み込みに失敗しました')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // 検索フィルタリング（body と summary を対象、大文字小文字無視）
   const filteredEntries = useMemo(() => {
@@ -85,9 +97,7 @@ export function EntryListPage() {
                   {entry.body.slice(0, 50)}{entry.body.length > 50 ? '...' : ''}
                 </span>
                 <span style={styles.status}>
-                  {entry.summaryStatus === 'done' ? '[要約済]' :
-                   entry.summaryStatus === 'pending' ? '[要約中]' :
-                   entry.summaryStatus === 'failed' ? '[要約失敗]' : ''}
+                  {SUMMARY_STATUS_LABEL[entry.summaryStatus]}
                 </span>
               </Link>
             </li>

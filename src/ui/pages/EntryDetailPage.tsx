@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getEntryById, deleteEntry } from '../../db/entries'
-import type { Entry } from '../../domain/entry'
+import type { Entry, SummaryStatus } from '../../domain/entry'
+
+const SUMMARY_SECTION: Record<
+  SummaryStatus,
+  { message: string; styleKey: 'pending' | 'failed' | 'noSummary' }
+> = {
+  pending: { message: '要約を生成中...', styleKey: 'pending' },
+  failed: { message: '要約の生成に失敗しました', styleKey: 'failed' },
+  none: { message: '要約はOFFです', styleKey: 'noSummary' },
+  done: { message: '要約はありません', styleKey: 'noSummary' },
+}
 
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -12,27 +22,35 @@ export function EntryDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    if (id) {
-      loadEntry(id)
+    if (!id) {
+      setLoading(false)
+      setEntry(null)
+      setError('IDが指定されていません')
+      return
+    }
+    let cancelled = false
+    async function load(entryId: string) {
+      try {
+        setLoading(true)
+        const found = await getEntryById(entryId)
+        if (cancelled) return
+        if (found) {
+          setEntry(found)
+          setError(null)
+        } else {
+          setError('日記が見つかりません')
+        }
+      } catch {
+        if (!cancelled) setError('データの読み込みに失敗しました')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load(id)
+    return () => {
+      cancelled = true
     }
   }, [id])
-
-  async function loadEntry(entryId: string) {
-    try {
-      setLoading(true)
-      const found = await getEntryById(entryId)
-      if (found) {
-        setEntry(found)
-        setError(null)
-      } else {
-        setError('日記が見つかりません')
-      }
-    } catch {
-      setError('データの読み込みに失敗しました')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function handleDelete() {
     if (!id) return
@@ -77,16 +95,14 @@ export function EntryDetailPage() {
 
       <section style={styles.section}>
         <h2 style={styles.sectionTitle}>要約</h2>
-        {entry.summaryStatus === 'pending' ? (
-          <p style={styles.pending}>要約を生成中...</p>
-        ) : entry.summaryStatus === 'failed' ? (
-          <p style={styles.failed}>要約の生成に失敗しました</p>
-        ) : entry.summaryStatus === 'none' ? (
-          <p style={styles.noSummary}>要約はOFFです</p>
-        ) : entry.summary ? (
+        {entry.summaryStatus === 'done' && entry.summary ? (
           <div style={styles.summary}>{entry.summary}</div>
         ) : (
-          <p style={styles.noSummary}>要約はありません</p>
+          <p style={styles[SUMMARY_SECTION[entry.summaryStatus].styleKey]}>
+            {entry.summaryStatus === 'done'
+              ? '要約はありません'
+              : SUMMARY_SECTION[entry.summaryStatus].message}
+          </p>
         )}
       </section>
 
