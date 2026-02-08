@@ -51,3 +51,17 @@ export async function updateEntry(id: string, patch: UpdateEntryParams): Promise
     updatedAt: Date.now(),
   })
 }
+
+/**
+ * Entry削除
+ */
+export async function deleteEntry(id: string): Promise<void> {
+  await db.entries.delete(id)
+}
+
+/**
+ * 全Entry削除
+ */
+export async function clearEntries(): Promise<void> {
+  await db.entries.clear()
+}

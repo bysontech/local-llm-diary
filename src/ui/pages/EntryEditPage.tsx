@@ -1,19 +1,49 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { addEntry, updateEntry } from '../../db/entries'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { getEntryById, updateEntry } from '../../db/entries'
 import { isSummaryEnabled } from '../../db/settings'
 import { summarizeRuleBased } from '../../llm/rule-based'
+import type { Entry } from '../../domain/entry'
 
-export function EntryCreatePage() {
+export function EntryEditPage() {
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const today = new Date().toISOString().split('T')[0]
 
-  const [date, setDate] = useState(today)
+  const [entry, setEntry] = useState<Entry | null>(null)
+  const [date, setDate] = useState('')
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (id) {
+      loadEntry(id)
+    }
+  }, [id])
+
+  async function loadEntry(entryId: string) {
+    try {
+      setLoading(true)
+      const found = await getEntryById(entryId)
+      if (found) {
+        setEntry(found)
+        setDate(found.date)
+        setBody(found.body)
+        setError(null)
+      } else {
+        setError('日記が見つかりません')
+      }
+    } catch {
+      setError('データの読み込みに失敗しました')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleSave() {
+    if (!entry || !id) return
+
     if (!body.trim()) {
       setError('本文を入力してください')
       return
@@ -25,27 +55,36 @@ export function EntryCreatePage() {
     try {
       const summaryEnabled = await isSummaryEnabled()
 
-      // Entry作成（summaryStatus=pending）→ DB保存
-      const entry = await addEntry({ date, body: body.trim() })
-
-      // 保存後は一覧へ戻す（要約更新は裏で）
-      navigate('/')
-
       if (summaryEnabled) {
-        // 要約ON: 要約生成 → updateEntry で summary と summaryStatus=done 更新
+        // 要約ON: 要約を再生成
+        await updateEntry(id, {
+          date,
+          body: body.trim(),
+          summaryStatus: 'pending',
+        })
+
+        // 詳細画面へ戻す
+        navigate(`/entry/${id}`)
+
+        // 要約生成（裏で実行）
         try {
           const summary = summarizeRuleBased(body.trim())
-          await updateEntry(entry.id, {
+          await updateEntry(id, {
             summary,
             summaryStatus: 'done',
           })
         } catch {
-          // 要約失敗時は summaryStatus=failed
-          await updateEntry(entry.id, { summaryStatus: 'failed' })
+          await updateEntry(id, { summaryStatus: 'failed' })
         }
       } else {
-        // 要約OFF: summaryStatus = 'none'
-        await updateEntry(entry.id, { summaryStatus: 'none' })
+        // 要約OFF: summaryStatus = 'none'、summary は保持しない
+        await updateEntry(id, {
+          date,
+          body: body.trim(),
+          summary: undefined,
+          summaryStatus: 'none',
+        })
+        navigate(`/entry/${id}`)
       }
     } catch {
       setError('保存に失敗しました')
@@ -53,11 +92,24 @@ export function EntryCreatePage() {
     }
   }
 
+  if (loading) {
+    return <div style={styles.container}>読み込み中...</div>
+  }
+
+  if (error && !entry) {
+    return (
+      <div style={styles.container}>
+        <Link to="/" style={styles.backLink}>← 一覧に戻る</Link>
+        <p style={styles.error}>{error}</p>
+      </div>
+    )
+  }
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <Link to="/" style={styles.backLink}>← 戻る</Link>
-        <h1 style={styles.title}>新規作成</h1>
+        <Link to={`/entry/${id}`} style={styles.backLink}>← 戻る</Link>
+        <h1 style={styles.title}>編集</h1>
       </header>
 
       {error && <p style={styles.error}>{error}</p>}
@@ -78,7 +130,6 @@ export function EntryCreatePage() {
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="今日の出来事や気持ちを書いてください..."
             style={styles.textarea}
             rows={10}
           />

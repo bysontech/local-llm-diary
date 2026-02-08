@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { getEntryById } from '../../db/entries'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { getEntryById, deleteEntry } from '../../db/entries'
 import type { Entry } from '../../domain/entry'
 
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [entry, setEntry] = useState<Entry | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -29,6 +31,22 @@ export function EntryDetailPage() {
       setError('データの読み込みに失敗しました')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!id) return
+
+    const confirmed = window.confirm('この日記を削除しますか？')
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      await deleteEntry(id)
+      navigate('/')
+    } catch {
+      setError('削除に失敗しました')
+      setDeleting(false)
     }
   }
 
@@ -63,12 +81,25 @@ export function EntryDetailPage() {
           <p style={styles.pending}>要約を生成中...</p>
         ) : entry.summaryStatus === 'failed' ? (
           <p style={styles.failed}>要約の生成に失敗しました</p>
+        ) : entry.summaryStatus === 'none' ? (
+          <p style={styles.noSummary}>要約はOFFです</p>
         ) : entry.summary ? (
           <div style={styles.summary}>{entry.summary}</div>
         ) : (
           <p style={styles.noSummary}>要約はありません</p>
         )}
       </section>
+
+      <div style={styles.actions}>
+        <Link to={`/edit/${id}`} style={styles.editButton}>編集</Link>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          style={styles.deleteButton}
+        >
+          {deleting ? '削除中...' : '削除'}
+        </button>
+      </div>
 
       <footer style={styles.footer}>
         <small style={styles.meta}>
@@ -132,6 +163,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   noSummary: {
     color: '#999',
+  },
+  actions: {
+    display: 'flex',
+    gap: '1rem',
+    marginTop: '1.5rem',
+  },
+  editButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#1a1a1a',
+    color: '#fff',
+    textDecoration: 'none',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
+  },
+  deleteButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#d00',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
   },
   footer: {
     marginTop: '2rem',
