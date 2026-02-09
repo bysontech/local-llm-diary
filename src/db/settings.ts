@@ -6,6 +6,7 @@ import { db } from './index'
 /** 設定キー定義 */
 export const SETTING_KEYS = {
   SUMMARY_ENABLED: 'summaryEnabled',
+  ONBOARDING_DISMISSED: 'onboardingDismissed',
 } as const
 
 /**
@@ -38,4 +39,18 @@ export async function isSummaryEnabled(): Promise<boolean> {
  */
 export async function setSummaryEnabled(enabled: boolean): Promise<void> {
   await setSetting(SETTING_KEYS.SUMMARY_ENABLED, enabled)
+}
+
+/**
+ * オンボーディングが閉じられたかどうかを取得（デフォルト: false）
+ */
+export async function isOnboardingDismissed(): Promise<boolean> {
+  return getSetting(SETTING_KEYS.ONBOARDING_DISMISSED, false)
+}
+
+/**
+ * オンボーディングを閉じた状態にする
+ */
+export async function setOnboardingDismissed(): Promise<void> {
+  await setSetting(SETTING_KEYS.ONBOARDING_DISMISSED, true)
 }

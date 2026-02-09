@@ -1,36 +1,52 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { listEntriesByDateDesc } from '../../db/entries'
-import type { Entry, SummaryStatus } from '../../domain/entry'
+import { isOnboardingDismissed, setOnboardingDismissed } from '../../db/settings'
+import type { Entry } from '../../domain/entry'
 
-const SUMMARY_STATUS_LABEL: Record<SummaryStatus, string> = {
-  done: '[要約済]',
-  pending: '[要約中]',
-  failed: '[要約失敗]',
-  none: '',
-}
 
 export function EntryListPage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        setLoading(true)
-        const list = await listEntriesByDateDesc()
-        if (!cancelled) {
-          setEntries(list)
-          setError(null)
-        }
-      } catch {
-        if (!cancelled) setError('データの読み込みに失敗しました')
-      } finally {
-        if (!cancelled) setLoading(false)
+    loadEntries()
+    checkOnboarding()
+  }, [])
+
+  async function checkOnboarding() {
+    try {
+      const dismissed = await isOnboardingDismissed()
+      if (!dismissed) {
+        setShowOnboarding(true)
       }
+    } catch {
+      // エラー時は表示しない
+    }
+  }
+
+  async function handleDismissOnboarding() {
+    setShowOnboarding(false)
+    try {
+      await setOnboardingDismissed()
+    } catch {
+      // 保存失敗しても閉じる
+    }
+  }
+
+  async function loadEntries() {
+    try {
+      setLoading(true)
+      const list = await listEntriesByDateDesc()
+      setEntries(list)
+      setError(null)
+    } catch {
+      setError('データの読み込みに失敗しました')
+    } finally {
+      setLoading(false)
     }
     load()
     return () => {
@@ -57,6 +73,19 @@ export function EntryListPage() {
 
   return (
     <div style={styles.container}>
+      {showOnboarding && (
+        <div style={styles.onboarding}>
+          <p style={styles.onboardingText}>
+            このアプリはあなたの日記を<strong>端末内のみ</strong>に保存します。
+            外部サーバーへの送信はありません。
+            設定画面からバックアップ（暗号化可）ができます。
+          </p>
+          <button onClick={handleDismissOnboarding} style={styles.onboardingButton}>
+            OK
+          </button>
+        </div>
+      )}
+
       <header style={styles.header}>
         <h1 style={styles.title}>日記一覧</h1>
         <Link to="/new" style={styles.newButton}>新規作成</Link>
@@ -84,9 +113,17 @@ export function EntryListPage() {
       {error && <p style={styles.error}>{error}</p>}
 
       {entries.length === 0 ? (
-        <p style={styles.empty}>まだ日記がありません</p>
+        <div style={styles.emptyBox}>
+          <p style={styles.emptyText}>まだ日記がありません</p>
+          <Link to="/new" style={styles.emptyButton}>最初の日記を書く</Link>
+        </div>
       ) : filteredEntries.length === 0 ? (
-        <p style={styles.empty}>該当する日記がありません</p>
+        <div style={styles.emptyBox}>
+          <p style={styles.emptyText}>「{query}」に該当する日記がありません</p>
+          <button onClick={() => setQuery('')} style={styles.emptyButtonSecondary}>
+            検索をクリア
+          </button>
+        </div>
       ) : (
         <ul style={styles.list}>
           {filteredEntries.map((entry) => (
@@ -119,6 +156,29 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '1rem',
     maxWidth: '600px',
     margin: '0 auto',
+  },
+  onboarding: {
+    backgroundColor: '#e3f2fd',
+    border: '1px solid #90caf9',
+    borderRadius: '8px',
+    padding: '1rem',
+    marginBottom: '1rem',
+    textAlign: 'center',
+  },
+  onboardingText: {
+    margin: '0 0 0.75rem 0',
+    fontSize: '0.9rem',
+    lineHeight: 1.5,
+    color: '#1565c0',
+  },
+  onboardingButton: {
+    padding: '0.5rem 1.5rem',
+    backgroundColor: '#1976d2',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
   },
   header: {
     display: 'flex',
@@ -166,10 +226,33 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#d00',
     marginBottom: '1rem',
   },
-  empty: {
-    color: '#666',
+  emptyBox: {
     textAlign: 'center',
     padding: '2rem',
+    backgroundColor: '#fafafa',
+    borderRadius: '8px',
+  },
+  emptyText: {
+    color: '#666',
+    margin: '0 0 1rem 0',
+  },
+  emptyButton: {
+    display: 'inline-block',
+    padding: '0.5rem 1rem',
+    backgroundColor: '#1a1a1a',
+    color: '#fff',
+    textDecoration: 'none',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
+  },
+  emptyButtonSecondary: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#fff',
+    color: '#666',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
   },
   list: {
     listStyle: 'none',
