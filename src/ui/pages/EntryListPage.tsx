@@ -4,6 +4,7 @@ import { listEntriesByDateDesc } from '../../db/entries'
 import { isOnboardingDismissed, setOnboardingDismissed } from '../../db/settings'
 import type { Entry } from '../../domain/entry'
 
+
 export function EntryListPage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [query, setQuery] = useState('')
@@ -47,7 +48,11 @@ export function EntryListPage() {
     } finally {
       setLoading(false)
     }
-  }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // 検索フィルタリング（body と summary を対象、大文字小文字無視）
   const filteredEntries = useMemo(() => {
@@ -129,9 +134,7 @@ export function EntryListPage() {
                   {entry.body.slice(0, 50)}{entry.body.length > 50 ? '...' : ''}
                 </span>
                 <span style={styles.status}>
-                  {entry.summaryStatus === 'done' ? '[要約済]' :
-                   entry.summaryStatus === 'pending' ? '[要約中]' :
-                   entry.summaryStatus === 'failed' ? '[要約失敗]' : ''}
+                  {SUMMARY_STATUS_LABEL[entry.summaryStatus]}
                 </span>
               </Link>
             </li>

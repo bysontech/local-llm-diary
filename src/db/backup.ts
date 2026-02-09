@@ -8,6 +8,8 @@ const BACKUP_VERSION = 1
 const ENCRYPTED_BACKUP_VERSION = 1
 const KDF_ITERATIONS = 100000
 
+const VALID_SUMMARY_STATUSES = ['none', 'pending', 'done', 'failed'] as const
+
 interface BackupData {
   version: number
   exportedAt: string
@@ -71,13 +73,25 @@ export function validateBackupData(data: unknown): data is BackupData {
     return false
   }
 
-  // entries の各要素をチェック
+  // entries の各要素をチェック（Entry 必須フィールド）
   for (const entry of obj.entries) {
     if (typeof entry !== 'object' || entry === null) {
       return false
     }
     const e = entry as Record<string, unknown>
     if (typeof e.id !== 'string' || typeof e.date !== 'string' || typeof e.body !== 'string') {
+      return false
+    }
+    if (
+      typeof e.summaryStatus !== 'string' ||
+      !VALID_SUMMARY_STATUSES.includes(e.summaryStatus as (typeof VALID_SUMMARY_STATUSES)[number])
+    ) {
+      return false
+    }
+    if (
+      !Number.isFinite(e.createdAt) ||
+      !Number.isFinite(e.updatedAt)
+    ) {
       return false
     }
   }

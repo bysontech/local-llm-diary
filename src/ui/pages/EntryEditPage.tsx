@@ -17,29 +17,37 @@ export function EntryEditPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (id) {
-      loadEntry(id)
+    if (!id) {
+      setLoading(false)
+      setEntry(null)
+      setError('IDが指定されていません')
+      return
+    }
+    let cancelled = false
+    async function load(entryId: string) {
+      try {
+        setLoading(true)
+        const found = await getEntryById(entryId)
+        if (cancelled) return
+        if (found) {
+          setEntry(found)
+          setDate(found.date)
+          setBody(found.body)
+          setError(null)
+        } else {
+          setError('日記が見つかりません')
+        }
+      } catch {
+        if (!cancelled) setError('データの読み込みに失敗しました')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load(id)
+    return () => {
+      cancelled = true
     }
   }, [id])
-
-  async function loadEntry(entryId: string) {
-    try {
-      setLoading(true)
-      const found = await getEntryById(entryId)
-      if (found) {
-        setEntry(found)
-        setDate(found.date)
-        setBody(found.body)
-        setError(null)
-      } else {
-        setError('日記が見つかりません')
-      }
-    } catch {
-      setError('データの読み込みに失敗しました')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function handleSave() {
     if (!entry || !id) return

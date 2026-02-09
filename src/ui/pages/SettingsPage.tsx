@@ -25,19 +25,22 @@ export function SettingsPage() {
   const encryptedFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    loadSettings()
-  }, [])
-
-  async function loadSettings() {
-    try {
-      const enabled = await isSummaryEnabled()
-      setSummaryOn(enabled)
-    } catch {
-      // 読み込み失敗時はデフォルト値を使用
-    } finally {
-      setLoading(false)
+    let cancelled = false
+    async function load() {
+      try {
+        const enabled = await isSummaryEnabled()
+        if (!cancelled) setSummaryOn(enabled)
+      } catch {
+        // 読み込み失敗時はデフォルト値を使用
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleSummaryToggle() {
     const newValue = !summaryOn
@@ -106,8 +109,8 @@ export function SettingsPage() {
     try {
       const text = await file.text()
       await importData(text)
-      // 設定を再読み込み
-      await loadSettings()
+      const enabled = await isSummaryEnabled()
+      setSummaryOn(enabled)
       setMessage('インポートしました')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'インポートに失敗しました'
@@ -164,7 +167,8 @@ export function SettingsPage() {
     try {
       const text = await file.text()
       await importDataEncrypted(text, decryptPassword)
-      await loadSettings()
+      const enabled = await isSummaryEnabled()
+      setSummaryOn(enabled)
       setDecryptPassword('')
       setMessage('暗号化インポートしました')
     } catch (err) {
