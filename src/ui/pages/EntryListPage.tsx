@@ -106,6 +106,8 @@ export function EntryListPage() {
       )}
 
       <footer style={styles.footer}>
+        <Link to="/review" style={styles.settingsLink}>振り返り</Link>
+        <span style={styles.footerSeparator}>|</span>
         <Link to="/settings" style={styles.settingsLink}>設定</Link>
       </footer>
     </div>
@@ -206,5 +208,9 @@ const styles: Record<string, React.CSSProperties> = {
   settingsLink: {
     color: '#666',
     fontSize: '0.9rem',
+  },
+  footerSeparator: {
+    color: '#ccc',
+    margin: '0 0.5rem',
   },
 }

@@ -43,6 +43,18 @@ export async function listEntriesByDateDesc(): Promise<Entry[]> {
 }
 
 /**
+ * 月別Entry取得（日付降順）
+ * @param yyyyMm 'YYYY-MM' 形式
+ */
+export async function getEntriesByMonth(yyyyMm: string): Promise<Entry[]> {
+  const entries = await db.entries
+    .where('date')
+    .startsWith(yyyyMm)
+    .toArray()
+  return entries.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/**
  * Entry更新
  */
 export async function updateEntry(id: string, patch: UpdateEntryParams): Promise<void> {
