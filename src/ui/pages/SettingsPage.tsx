@@ -200,6 +200,7 @@ export function SettingsPage() {
           <span>要約を自動生成する</span>
         </label>
         <p style={styles.hint}>
+          日記の内容から自動で要約を生成します（端末内処理）。
           OFFにすると、新規作成・編集時に要約が生成されません。
         </p>
       </section>
@@ -231,6 +232,7 @@ export function SettingsPage() {
         </div>
         <p style={styles.hint}>
           日記と設定をJSONファイルでバックアップできます。
+          ファイル内容は平文のため、取り扱いに注意してください。
         </p>
       </section>
 
@@ -276,7 +278,8 @@ export function SettingsPage() {
           />
         </div>
         <p style={styles.hint}>
-          パスワードで暗号化してバックアップします。
+          パスワードで暗号化（AES-256）してバックアップします。
+          クラウドストレージ等への保存に適しています。
           パスワードを忘れると復元できません。
         </p>
       </section>
