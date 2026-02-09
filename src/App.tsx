@@ -4,6 +4,7 @@ import { EntryCreatePage } from './ui/pages/EntryCreatePage'
 import { EntryDetailPage } from './ui/pages/EntryDetailPage'
 import { EntryEditPage } from './ui/pages/EntryEditPage'
 import { SettingsPage } from './ui/pages/SettingsPage'
+import { ReviewPage } from './ui/pages/ReviewPage'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/entry/:id" element={<EntryDetailPage />} />
         <Route path="/edit/:id" element={<EntryEditPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/review" element={<ReviewPage />} />
       </Routes>
     </BrowserRouter>
   )
