@@ -2,8 +2,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { listEntriesByDateDesc } from '../../db/entries'
 import { isOnboardingDismissed, setOnboardingDismissed } from '../../db/settings'
-import type { Entry } from '../../domain/entry'
+import type { Entry, SummaryStatus } from '../../domain/entry'
 
+const SUMMARY_STATUS_LABEL: Record<SummaryStatus, string> = {
+  done: '[要約済]',
+  pending: '[要約中]',
+  failed: '[要約失敗]',
+  none: '',
+}
 
 export function EntryListPage() {
   const [entries, setEntries] = useState<Entry[]>([])
