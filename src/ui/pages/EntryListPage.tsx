@@ -13,20 +13,35 @@ export function EntryListPage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
-    loadEntries()
-    checkOnboarding()
-  }, [])
-
-  async function checkOnboarding() {
-    try {
-      const dismissed = await isOnboardingDismissed()
-      if (!dismissed) {
-        setShowOnboarding(true)
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const list = await listEntriesByDateDesc()
+        if (!cancelled) {
+          setEntries(list)
+          setError(null)
+        }
+      } catch {
+        if (!cancelled) setError('データの読み込みに失敗しました')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } catch {
-      // エラー時は表示しない
     }
-  }
+    async function checkOnboarding() {
+      try {
+        const dismissed = await isOnboardingDismissed()
+        if (!cancelled && !dismissed) setShowOnboarding(true)
+      } catch {
+        // エラー時は表示しない
+      }
+    }
+    load()
+    checkOnboarding()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleDismissOnboarding() {
     setShowOnboarding(false)
@@ -36,23 +51,6 @@ export function EntryListPage() {
       // 保存失敗しても閉じる
     }
   }
-
-  async function loadEntries() {
-    try {
-      setLoading(true)
-      const list = await listEntriesByDateDesc()
-      setEntries(list)
-      setError(null)
-    } catch {
-      setError('データの読み込みに失敗しました')
-    } finally {
-      setLoading(false)
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   // 検索フィルタリング（body と summary を対象、大文字小文字無視）
   const filteredEntries = useMemo(() => {
