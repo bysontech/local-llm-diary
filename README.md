@@ -25,6 +25,11 @@
 # 依存インストール
 npm ci
 
+# 本番ビルド時: 正canonical URL を設定（任意）
+# .env.example をコピーして .env を作成し、VITE_APP_ORIGIN を編集する。
+# 未設定時は空文字となり、canonical / PWA / OG で利用する際に設定が必要。
+cp .env.example .env
+
 # 開発サーバー起動
 npm run dev
 
